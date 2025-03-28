@@ -35,19 +35,30 @@ jobs:
       id: process_description
       run: |
         echo "${{ github.event.pull_request.title }}" > pr_title.txt
-        echo "${{ github.event.pull_request.body }}" > pr_description.txt
+        
+        # Save PR description to file
+        cat << 'EOF' > pr_description.txt
+        ${{ github.event.pull_request.body }}
+        EOF
+        
+        # Print PR description for debugging
+        echo "PR Description:"
+        cat pr_description.txt
         
         # Extract checklist items from PR description if they exist
         if grep -q "\- \[x\]" pr_description.txt; then
-          grep "\- \[x\]" pr_description.txt | sed "s/- \[x\]/\-/g" > pr_changes.txt
-          echo "Using checklist items from PR description for changelog"
+          echo "Found checklist items in PR description"
+          # Extract lines with "- [x]" and remove the "- [x]" prefix
+          grep "\- \[x\]" pr_description.txt | sed 's/- \[x\] */- /g' > pr_changes.txt
+          echo "Extracted checklist items:"
+          cat pr_changes.txt
         else
+          echo "No checklist items found in PR description, using PR title instead"
           echo "${{ github.event.pull_request.title }}" | sed "s/\[release\]//i" | sed "s/^\s*//" > pr_changes.txt
-          echo "Using PR title for changelog"
         fi
         
         # Create the diff file for analysis
-        git log --pretty=format:"%s" origin/${{ github.base_ref }}..origin/${{ github.head_ref }} >> pr_changes.txt
+        git log --pretty=format:"%s" origin/${{ github.base_ref }}..origin/${{ github.head_ref }} >> pr_changes_log.txt
         git diff origin/${{ github.base_ref }}..origin/${{ github.head_ref }} > pr_diff.txt
     
     - name: Run version update script
@@ -67,4 +78,4 @@ jobs:
     - name: Cleanup temporary files
       if: always()
       run: |
-        rm -f pr_title.txt pr_description.txt pr_changes.txt pr_diff.txt 
+        rm -f pr_title.txt pr_description.txt pr_changes.txt pr_diff.txt pr_changes_log.txt 
