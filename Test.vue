@@ -1,1 +1,0 @@
-<template>Test file</template>
