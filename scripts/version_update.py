@@ -11,7 +11,7 @@ import re
 import sys
 import yaml
 import datetime
-from helpers import get_current_version, increment_version, generate_changelog_with_claude
+from helpers import get_current_version, increment_version
 
 def load_config(config_path="version-update-config.yml"):
     """
@@ -116,7 +116,6 @@ def main():
     # Get PR information
     pr_description = ""
     pr_changes = ""
-    pr_diff = ""
     
     if os.path.exists("pr_description.txt"):
         with open("pr_description.txt", "r") as f:
@@ -126,10 +125,6 @@ def main():
         with open("pr_changes.txt", "r") as f:
             pr_changes = f.read()
             print(f"Found checklist items/changes: {pr_changes}")
-            
-    if os.path.exists("pr_diff.txt"):
-        with open("pr_diff.txt", "r") as f:
-            pr_diff = f.read()
     
     # Find main PHP file to get current version
     main_php_file = None
@@ -152,33 +147,29 @@ def main():
         print(f"Error getting version: {str(e)}")
         sys.exit(1)
     
-    # Use the extracted checklist items from the PR if available
+    # Generate changelog entry - use checklist items if available, otherwise use PR title
     if pr_changes and pr_changes.strip():
         print("Using extracted checklist items for changelog")
         changelog_entry = pr_changes
     else:
-        # Fall back to generating changelog with Claude
-        print("No checklist items found, generating changelog with Claude")
-        changelog_entry = generate_changelog_with_claude(
-            pr_title, pr_description, pr_changes, pr_diff
-        )
-        
-        if not changelog_entry:
-            print("Failed to generate changelog entry, using PR title as fallback")
-            clean_title = re.sub(r'\[release\]', '', pr_title, flags=re.IGNORECASE).strip()
-            changelog_entry = f"- {clean_title}"
+        print("No checklist items found, using PR title")
+        clean_title = re.sub(r'\[release\]', '', pr_title, flags=re.IGNORECASE).strip()
+        changelog_entry = f"- {clean_title}"
     
     # Update version in files
     for file_config in config.get("files", []):
         file_path = file_config.get("path")
         file_type = file_config.get("type")
+        needs_description = file_config.get("needs_description", True)  # Default to True for backwards compatibility
         
         if file_type == "php":
             patterns = file_config.get("patterns", [])
             update_version_in_file(file_path, patterns, new_version)
-        elif file_type == "changelog":
+        elif file_type == "changelog" and needs_description:
             header_pattern = file_config.get("header_pattern", "")
             update_changelog(file_path, header_pattern, changelog_entry, new_version)
+        elif file_type == "changelog" and not needs_description:
+            print(f"Skipping changelog update for {file_path} as needs_description is set to false")
     
     print("Version update completed successfully")
 

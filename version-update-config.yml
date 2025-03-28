@@ -3,6 +3,7 @@ files:
   # PHP file with version in header and define statement
   - path: hostinger-affiliate-plugin.php
     type: php
+    needs_description: false
     patterns:
       - search: "Version:\\s+([0-9]+\\.[0-9]+\\.[0-9]+)"
         replace: "Version:           {{new_version}}"
@@ -12,10 +13,12 @@ files:
   # Changelog files
   - path: changelog.md
     type: changelog
+    needs_description: true
     header_pattern: "Changelog\\n========="
   
   - path: changelog.txt
     type: changelog
+    needs_description: true
     header_pattern: "Changelog\\n========="
 
 # Version increment settings
