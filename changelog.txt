@@ -214,5 +214,11 @@ Fixed
 2.0.27 (2025-03-11)
 - Added source param to proxy API requests
 
+2.0.29 (2025-03-28)
+- Add feature 1
+- Add feature 2
+- Add feature 3  
+
+
 2.0.28 (2025-03-17)
 - Update with latest hcomponents version and color palette
