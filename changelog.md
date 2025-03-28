@@ -1,5 +1,12 @@
 Changelog
 =========
+2.0.29 (2025-03-28)
+ - Testing some stuff 1
+ - And two 
+ - And three
+
+
+
 1.0.2 (2023-11-28)
 - MVP version of the plugin
 
