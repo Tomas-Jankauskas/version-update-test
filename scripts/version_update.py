@@ -63,7 +63,7 @@ def update_version_in_file(file_path, patterns, new_version):
 
 def update_changelog(file_path, header_pattern, changelog_entry, new_version):
     """
-    Update changelog file with a new entry
+    Update changelog file with a new entry AFTER the highest version
     
     Args:
         file_path: Path to the changelog file
@@ -88,42 +88,62 @@ def update_changelog(file_path, header_pattern, changelog_entry, new_version):
         # Process the file
         header_found = False
         header_line_index = -1
-        first_version_line_index = -1
         version_pattern = re.compile(r"^(\d+\.\d+\.\d+) \(\d{4}-\d{2}-\d{2}\)")
+        versions = []  # List to store all version entries [(line_number, version), ...]
         
         # First pass: Find the header
         for i, line in enumerate(lines):
-            # Check for header pattern across 2 lines
-            if i < len(lines) - 1 and re.search(header_pattern, line + lines[i+1]):
-                header_found = True
-                header_line_index = i+1  # Set to the line after "========="
-                print(f"Header found at line {i} and {i+1}")
-                break
+            # Only check if we have at least 2 lines
+            if i < len(lines) - 1:
+                two_line_content = lines[i] + lines[i+1]
+                if re.search(header_pattern, two_line_content):
+                    header_found = True
+                    header_line_index = i+1  # Set to the line after "========="
+                    print(f"Header found at lines {i} and {i+1}")
+                    break
                 
         if not header_found:
             print(f"Could not find header pattern in {file_path}")
             return False
-                
-        # Second pass: Find the first version entry after the header
-        for i in range(header_line_index + 1, len(lines)):
-            if version_pattern.match(lines[i]):
-                first_version_line_index = i
-                print(f"Found first version entry at line {i}: {lines[i].strip()}")
-                break
         
-        # Decide where to insert the new entry
-        if first_version_line_index != -1:
-            # Insert before the first version entry
-            insertion_index = first_version_line_index
-            print(f"Inserting new version {new_version} before line {insertion_index}")
-        else:
+        # Second pass: Find all version entries
+        print(f"Looking for all version entries after line {header_line_index}")
+        for i in range(header_line_index + 1, len(lines)):
+            match = version_pattern.match(lines[i])
+            if match:
+                version = match.group(1)
+                versions.append((i, version))
+                print(f"Found version entry at line {i}: {version}")
+        
+        if not versions:
             # No version entries found, insert right after the header
-            # Usually there should be at least one empty line after the header
-            # Look for the first non-empty line after the header
             insertion_index = header_line_index + 1
+            # Skip empty lines
             while insertion_index < len(lines) and not lines[insertion_index].strip():
                 insertion_index += 1
             print(f"No version entries found, inserting after header at line {insertion_index}")
+        else:
+            # Find the highest version - first sort by version number (semver)
+            from helpers import parse_version
+            
+            # Sort versions by their numeric value (descending)
+            sorted_versions = sorted(versions, key=lambda x: parse_version(x[1]), reverse=True)
+            highest_version_line, highest_version = sorted_versions[0]
+            print(f"Highest version found: {highest_version} at line {highest_version_line}")
+            
+            # Find where this version's entry ends (look for next version or EOF)
+            # Start searching from the line after the version line
+            end_of_entry = highest_version_line + 1
+            while end_of_entry < len(lines):
+                # If we hit another version entry, we've found the end
+                if version_pattern.match(lines[end_of_entry]):
+                    break
+                # If we're at the end of the file, we've found the end
+                end_of_entry += 1
+            
+            # Insert after the highest version's entry
+            insertion_index = end_of_entry
+            print(f"Inserting new version {new_version} after version {highest_version} at line {insertion_index}")
         
         # Insert the new entry
         updated_lines = lines[:insertion_index] + new_entry_lines + lines[insertion_index:]
