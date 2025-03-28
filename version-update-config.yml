@@ -1,0 +1,23 @@
+# Files to update when bumping version
+files:
+  # PHP file with version in header and define statement
+  - path: hostinger-affiliate-plugin.php
+    type: php
+    patterns:
+      - search: "Version:\\s+([0-9]+\\.[0-9]+\\.[0-9]+)"
+        replace: "Version:           {{new_version}}"
+      - search: "define\\(\\s*'HOSTINGER_AFFILIATE_PLUGIN_VERSION',\\s*'([0-9]+\\.[0-9]+\\.[0-9]+)'\\s*\\)"
+        replace: "define( 'HOSTINGER_AFFILIATE_PLUGIN_VERSION', '{{new_version}}' )"
+  
+  # Changelog files
+  - path: changelog.md
+    type: changelog
+    header_pattern: "Changelog\\n========="
+  
+  - path: changelog.txt
+    type: changelog
+    header_pattern: "Changelog\\n========="
+
+# Version increment settings
+version:
+  increment: patch  # always increment patch version by 1 
