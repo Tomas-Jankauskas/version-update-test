@@ -96,21 +96,33 @@ def update_changelog(file_path, header_pattern, changelog_entry, new_version):
             insert_position = match.end()
             updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
         else:
-            # Find the first occurrence of the latest version
-            latest_version = versions[0]
-            latest_version_pattern = f"{latest_version} \\(\\d{{4}}-\\d{{2}}-\\d{{2}}\\)"
-            latest_version_match = re.search(latest_version_pattern, content)
+            # Sort versions to find the highest version
+            from helpers import parse_version
             
-            if latest_version_match:
-                # Insert the new entry before the latest version
-                insert_position = latest_version_match.start()
+            # Convert versions to tuples of integers for proper comparison
+            version_tuples = [parse_version(v) for v in versions]
+            version_map = dict(zip(version_tuples, versions))
+            
+            # Find the highest version
+            highest_version_tuple = max(version_tuples)
+            highest_version = version_map[highest_version_tuple]
+            
+            print(f"Highest version found: {highest_version}")
+            
+            # Find the position of the highest version in the content
+            highest_version_pattern = f"{highest_version} \\(\\d{{4}}-\\d{{2}}-\\d{{2}}\\)"
+            highest_version_match = re.search(highest_version_pattern, content)
+            
+            if highest_version_match:
+                # Insert the new entry before the highest version entry
+                insert_position = highest_version_match.start()
                 updated_content = content[:insert_position] + new_entry + content[insert_position:]
-                print(f"Inserting new entry before existing version {latest_version}")
+                print(f"Inserting new entry before highest version {highest_version}")
             else:
                 # Fallback to inserting after header
                 insert_position = match.end()
                 updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
-                print(f"Could not find latest version pattern, inserting after header")
+                print(f"Could not find highest version pattern, inserting after header")
         
         with open(file_path, "w") as f:
             f.write(updated_content)
