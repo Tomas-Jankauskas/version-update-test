@@ -8,13 +8,27 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  checks: write  # Required for creating check runs
 
 jobs:
   update_version:
+    name: Update Version and Changelog
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.title, '[release]') || contains(github.event.pull_request.title, '[Release]')
+    # Using multiple contains() checks for different casings instead of lower()
+    if: contains(github.event.pull_request.title, '[release]') || contains(github.event.pull_request.title, '[Release]') || contains(github.event.pull_request.title, '[RELEASE]')
 
     steps:
+    - name: Validate Release PR
+      run: |
+        # Convert PR title to lowercase for case-insensitive comparison
+        PR_TITLE_LOWER=$(echo "${{ github.event.pull_request.title }}" | tr '[:upper:]' '[:lower:]')
+        if [[ "$PR_TITLE_LOWER" == *"[release]"* ]]; then
+          echo "This is a release PR. Version update is required."
+        else
+          echo "Not a release PR, but this should not happen due to the job-level 'if' condition."
+          exit 1
+        fi
+
     - uses: actions/checkout@v2
       with:
         ref: ${{ github.head_ref }}
@@ -54,7 +68,8 @@ jobs:
           cat pr_changes.txt
         else
           echo "No checklist items found in PR description, using PR title instead"
-          echo "${{ github.event.pull_request.title }}" | sed "s/\[release\]//i" | sed "s/^\s*//" > pr_changes.txt
+          # Case-insensitive removal of [release] tag from the title
+          echo "${{ github.event.pull_request.title }}" | sed -E 's/\[release\]//i' | sed 's/^\s*//' > pr_changes.txt
         fi
         
         # Create the diff file for analysis
