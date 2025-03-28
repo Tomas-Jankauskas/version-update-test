@@ -216,3 +216,8 @@ Fixed
 
 2.0.28 (2025-03-17)
 - Update with latest hcomponents version and color palette
+2.0.29 (2025-03-28)
+- Add feature 1
+- Add one more feature 2
+- One last feature 3
+
