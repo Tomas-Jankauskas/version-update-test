@@ -107,10 +107,10 @@ def main():
         print("Could not load configuration")
         sys.exit(1)
     
-    # Check if this is a release PR
+    # Check if this is a release PR - case-insensitive check
     pr_title = os.environ.get("PR_TITLE", "")
-    if not pr_title.lower().startswith("[release]"):
-        print("Not a release PR, skipping version update")
+    if not re.search(r'^\[release\]', pr_title, re.IGNORECASE):
+        print(f"Not a release PR ('{pr_title}'), skipping version update")
         sys.exit(0)
     
     # Get PR information
@@ -125,6 +125,7 @@ def main():
     if os.path.exists("pr_changes.txt"):
         with open("pr_changes.txt", "r") as f:
             pr_changes = f.read()
+            print(f"Found checklist items/changes: {pr_changes}")
             
     if os.path.exists("pr_diff.txt"):
         with open("pr_diff.txt", "r") as f:
@@ -151,15 +152,21 @@ def main():
         print(f"Error getting version: {str(e)}")
         sys.exit(1)
     
-    # Generate changelog entry
-    changelog_entry = generate_changelog_with_claude(
-        pr_title, pr_description, pr_changes, pr_diff
-    )
-    
-    if not changelog_entry:
-        print("Failed to generate changelog entry")
-        clean_title = re.sub(r'\[release\]', '', pr_title, flags=re.IGNORECASE).strip()
-        changelog_entry = f"- {clean_title}"
+    # Use the extracted checklist items from the PR if available
+    if pr_changes and pr_changes.strip():
+        print("Using extracted checklist items for changelog")
+        changelog_entry = pr_changes
+    else:
+        # Fall back to generating changelog with Claude
+        print("No checklist items found, generating changelog with Claude")
+        changelog_entry = generate_changelog_with_claude(
+            pr_title, pr_description, pr_changes, pr_diff
+        )
+        
+        if not changelog_entry:
+            print("Failed to generate changelog entry, using PR title as fallback")
+            clean_title = re.sub(r'\[release\]', '', pr_title, flags=re.IGNORECASE).strip()
+            changelog_entry = f"- {clean_title}"
     
     # Update version in files
     for file_config in config.get("files", []):
