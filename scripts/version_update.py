@@ -82,47 +82,25 @@ def update_changelog(file_path, header_pattern, changelog_entry, new_version):
         new_entry = f"{new_version} ({today})\n{changelog_entry}\n\n"
         
         # First, make sure we find the header
-        match = re.search(header_pattern, content)
-        if not match:
+        header_match = re.search(header_pattern, content)
+        if not header_match:
             print(f"Could not find header pattern in {file_path}")
             return False
         
-        # Find all version entries in the changelog
-        version_pattern = r"(\d+\.\d+\.\d+) \(\d{4}-\d{2}-\d{2}\)"
-        versions = re.findall(version_pattern, content)
+        # Find the first version entry in the changelog
+        first_version_pattern = r"(\d+\.\d+\.\d+) \(\d{4}-\d{2}-\d{2}\)"
+        first_version_match = re.search(first_version_pattern, content)
         
-        if not versions:
+        if not first_version_match:
             # If no versions found, insert after header
-            insert_position = match.end()
+            insert_position = header_match.end()
             updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
+            print("No existing versions found, inserting after header")
         else:
-            # Sort versions to find the highest version
-            from helpers import parse_version
-            
-            # Convert versions to tuples of integers for proper comparison
-            version_tuples = [parse_version(v) for v in versions]
-            version_map = dict(zip(version_tuples, versions))
-            
-            # Find the highest version
-            highest_version_tuple = max(version_tuples)
-            highest_version = version_map[highest_version_tuple]
-            
-            print(f"Highest version found: {highest_version}")
-            
-            # Find the position of the highest version in the content
-            highest_version_pattern = f"{highest_version} \\(\\d{{4}}-\\d{{2}}-\\d{{2}}\\)"
-            highest_version_match = re.search(highest_version_pattern, content)
-            
-            if highest_version_match:
-                # Insert the new entry before the highest version entry
-                insert_position = highest_version_match.start()
-                updated_content = content[:insert_position] + new_entry + content[insert_position:]
-                print(f"Inserting new entry before highest version {highest_version}")
-            else:
-                # Fallback to inserting after header
-                insert_position = match.end()
-                updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
-                print(f"Could not find highest version pattern, inserting after header")
+            # Insert the new entry before the first version entry
+            insert_position = first_version_match.start()
+            updated_content = content[:insert_position] + new_entry + content[insert_position:]
+            print(f"Inserting new entry at the top of the changelog, before first version {first_version_match.group(1)}")
         
         with open(file_path, "w") as f:
             f.write(updated_content)
