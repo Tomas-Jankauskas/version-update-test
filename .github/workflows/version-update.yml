@@ -31,11 +31,23 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Prepare PR Information
+    - name: Process PR Description for Changelog
+      id: process_description
       run: |
         echo "${{ github.event.pull_request.title }}" > pr_title.txt
         echo "${{ github.event.pull_request.body }}" > pr_description.txt
-        git log --pretty=format:"%s" origin/${{ github.base_ref }}..origin/${{ github.head_ref }} > pr_changes.txt
+        
+        # Extract checklist items from PR description if they exist
+        if grep -q "\- \[x\]" pr_description.txt; then
+          grep "\- \[x\]" pr_description.txt | sed "s/- \[x\]/\-/g" > pr_changes.txt
+          echo "Using checklist items from PR description for changelog"
+        else
+          echo "${{ github.event.pull_request.title }}" | sed "s/\[release\]//i" | sed "s/^\s*//" > pr_changes.txt
+          echo "Using PR title for changelog"
+        fi
+        
+        # Create the diff file for analysis
+        git log --pretty=format:"%s" origin/${{ github.base_ref }}..origin/${{ github.head_ref }} >> pr_changes.txt
         git diff origin/${{ github.base_ref }}..origin/${{ github.head_ref }} > pr_diff.txt
     
     - name: Run version update script
@@ -47,6 +59,12 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add .
+        # Only add the specific files we want to commit
+        git add changelog.md changelog.txt hostinger-affiliate-plugin.php
         git commit -m "Update version and changelog [skip ci]" || echo "No changes to commit"
-        git push 
+        git push
+        
+    - name: Cleanup temporary files
+      if: always()
+      run: |
+        rm -f pr_title.txt pr_description.txt pr_changes.txt pr_diff.txt 
