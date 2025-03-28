@@ -1,0 +1,8 @@
+diff --git a/YOHO.vue b/YOHO.vue
+deleted file mode 100644
+index bfc6dba..0000000
+--- a/YOHO.vue
++++ /dev/null
+@@ -1 +0,0 @@
+-<template>testing</template>
+\ No newline at end of file
