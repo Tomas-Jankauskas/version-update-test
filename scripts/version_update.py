@@ -72,42 +72,69 @@ def update_changelog(file_path, header_pattern, changelog_entry, new_version):
         new_version: New version string
     """
     try:
+        # Read file contents as lines
         with open(file_path, "r") as f:
-            content = f.read()
+            lines = f.readlines()
         
         # Get current date
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         
         # Create new entry
-        new_entry = f"{new_version} ({today})\n{changelog_entry}\n\n"
+        new_entry_lines = [f"{new_version} ({today})\n"]
+        for line in changelog_entry.strip().split('\n'):
+            new_entry_lines.append(f"{line}\n")
+        new_entry_lines.append("\n")  # Add extra newline for spacing
         
-        # First, make sure we find the header
-        header_match = re.search(header_pattern, content)
-        if not header_match:
+        # Process the file
+        header_found = False
+        header_line_index = -1
+        first_version_line_index = -1
+        version_pattern = re.compile(r"^(\d+\.\d+\.\d+) \(\d{4}-\d{2}-\d{2}\)")
+        
+        # First pass: Find the header
+        for i, line in enumerate(lines):
+            # Check for header pattern across 2 lines
+            if i < len(lines) - 1 and re.search(header_pattern, line + lines[i+1]):
+                header_found = True
+                header_line_index = i+1  # Set to the line after "========="
+                print(f"Header found at line {i} and {i+1}")
+                break
+                
+        if not header_found:
             print(f"Could not find header pattern in {file_path}")
             return False
+                
+        # Second pass: Find the first version entry after the header
+        for i in range(header_line_index + 1, len(lines)):
+            if version_pattern.match(lines[i]):
+                first_version_line_index = i
+                print(f"Found first version entry at line {i}: {lines[i].strip()}")
+                break
         
-        # Find the first version entry in the changelog
-        first_version_pattern = r"(\d+\.\d+\.\d+) \(\d{4}-\d{2}-\d{2}\)"
-        first_version_match = re.search(first_version_pattern, content)
-        
-        if not first_version_match:
-            # If no versions found, insert after header
-            insert_position = header_match.end()
-            updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
-            print("No existing versions found, inserting after header")
+        # Decide where to insert the new entry
+        if first_version_line_index != -1:
+            # Insert before the first version entry
+            insertion_index = first_version_line_index
+            print(f"Inserting new version {new_version} before line {insertion_index}")
         else:
-            # Insert the new entry before the first version entry
-            insert_position = first_version_match.start()
-            updated_content = content[:insert_position] + new_entry + content[insert_position:]
-            print(f"Inserting new entry at the top of the changelog, before first version {first_version_match.group(1)}")
+            # No version entries found, insert right after the header
+            # Usually there should be at least one empty line after the header
+            # Look for the first non-empty line after the header
+            insertion_index = header_line_index + 1
+            while insertion_index < len(lines) and not lines[insertion_index].strip():
+                insertion_index += 1
+            print(f"No version entries found, inserting after header at line {insertion_index}")
         
+        # Insert the new entry
+        updated_lines = lines[:insertion_index] + new_entry_lines + lines[insertion_index:]
+        
+        # Write the updated content back to the file
         with open(file_path, "w") as f:
-            f.write(updated_content)
-            
+            f.writelines(updated_lines)
+        
         print(f"Updated changelog in {file_path}")
         return True
-            
+    
     except Exception as e:
         print(f"Error updating changelog in {file_path}: {str(e)}")
         return False
