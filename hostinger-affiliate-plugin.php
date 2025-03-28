@@ -3,7 +3,7 @@
  * Plugin Name:       Random Plugin
  * Plugin URI:        https://example.com
  * Description:       A random plugin for testing purposes.
- * Version:           1.0.0
+ * Version:           2.0.28
  * Author:            Random Author
  * Requires PHP:      7.4
  * Requires at least: 5.6
