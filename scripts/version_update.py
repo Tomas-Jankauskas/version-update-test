@@ -81,20 +81,42 @@ def update_changelog(file_path, header_pattern, changelog_entry, new_version):
         # Create new entry
         new_entry = f"{new_version} ({today})\n{changelog_entry}\n\n"
         
-        # Find where to insert the new entry
+        # First, make sure we find the header
         match = re.search(header_pattern, content)
-        if match:
-            insert_position = match.end()
-            updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
-            
-            with open(file_path, "w") as f:
-                f.write(updated_content)
-                
-            print(f"Updated changelog in {file_path}")
-            return True
-        else:
+        if not match:
             print(f"Could not find header pattern in {file_path}")
             return False
+        
+        # Find all version entries in the changelog
+        version_pattern = r"(\d+\.\d+\.\d+) \(\d{4}-\d{2}-\d{2}\)"
+        versions = re.findall(version_pattern, content)
+        
+        if not versions:
+            # If no versions found, insert after header
+            insert_position = match.end()
+            updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
+        else:
+            # Find the first occurrence of the latest version
+            latest_version = versions[0]
+            latest_version_pattern = f"{latest_version} \\(\\d{{4}}-\\d{{2}}-\\d{{2}}\\)"
+            latest_version_match = re.search(latest_version_pattern, content)
+            
+            if latest_version_match:
+                # Insert the new entry before the latest version
+                insert_position = latest_version_match.start()
+                updated_content = content[:insert_position] + new_entry + content[insert_position:]
+                print(f"Inserting new entry before existing version {latest_version}")
+            else:
+                # Fallback to inserting after header
+                insert_position = match.end()
+                updated_content = content[:insert_position] + "\n" + new_entry + content[insert_position:]
+                print(f"Could not find latest version pattern, inserting after header")
+        
+        with open(file_path, "w") as f:
+            f.write(updated_content)
+            
+        print(f"Updated changelog in {file_path}")
+        return True
             
     except Exception as e:
         print(f"Error updating changelog in {file_path}: {str(e)}")
